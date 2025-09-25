@@ -1,5 +1,4 @@
-// CONFIGURA QUI IL TUO LINK NGROK HTTPS
-const NGROK_URL = " https://8ce6e97c92f9.ngrok-free.app"; // ← sostituisci con il tuo link reale
+const NGROK_URL = " https://41c166f6fa4e.ngrok-free.app"; // ← Inserisci qui il tuo link HTTPS da Ngrok
 
 const dropzone = document.getElementById('dropzone');
 const viewer = document.getElementById('viewer');
@@ -22,17 +21,15 @@ dropzone.addEventListener('drop', async (event) => {
   dropzone.classList.remove('dragging');
 
   const file = event.dataTransfer.files[0];
-  if (!file || !file.name.endsWith('.glb')) {
-    alert('Carica un file .glb valido');
+  if (!file || (!file.name.endsWith('.glb') && !file.name.endsWith('.usdz'))) {
+    alert('Carica un file .glb (Android) o .usdz (iOS)');
     return;
   }
 
-  // Prepara il form per invio al backend Flask
   const formData = new FormData();
   formData.append('file', file);
 
   try {
-    // Upload al backend Flask
     const response = await fetch(`${NGROK_URL}/upload`, {
       method: 'POST',
       body: formData
@@ -45,13 +42,22 @@ dropzone.addEventListener('drop', async (event) => {
     const modelPath = await response.text(); // es: /models/model.glb
     const fullURL = `${NGROK_URL}${modelPath}`;
 
-    // Aggiorna il model-viewer
-    viewer.setAttribute('src', fullURL);
+    // Imposta il file corretto nel model-viewer
+    if (file.name.endsWith('.glb')) {
+      viewer.setAttribute('src', fullURL);
+      viewer.removeAttribute('ios-src');
+    } else if (file.name.endsWith('.usdz')) {
+      viewer.setAttribute('ios-src', fullURL);
+      viewer.removeAttribute('src');
+    }
+
+    // Determina la piattaforma target in base al tipo di file
+    const targetPlatform = file.name.endsWith('.usdz') ? 'iOS' : 'Android';
 
     // Genera QR code
     const qrURL = `https://api.qrserver.com/v1/create-qr-code/?data=${encodeURIComponent(fullURL)}&size=200x200`;
     qrContainer.innerHTML = `
-      <p>Scannerizza per visualizzare in AR:</p>
+      <p>Scannerizza per visualizzare in AR su ${targetPlatform}:</p>
       <img src="${qrURL}" alt="QR Code">
     `;
   } catch (error) {
